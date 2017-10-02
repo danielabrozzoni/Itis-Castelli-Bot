@@ -1,4 +1,5 @@
 <?php
+	ignore_user_abort(true);
 	$content = file_get_contents("php://input");
 	$update = json_decode($content, true);
 
@@ -27,6 +28,7 @@
 		curl_exec($ch);
 		curl_close($ch);
 	}
+
 	else if (strpos($text, "lista delle palestre") !== false){
 		$array = array("chat_id" => $chatId, "text" => "Lista delle palestre:\r\n-Palestra 1: Laboratori di informatica (grande)\r\n-Palestra 2: Laboratori di informatica (piccola)\r\n-Palestra 3: Sotto laboratori di fisica (grande)\r\n-Palestra 4: Sotto laboratori di fisica (piccola)\r\n-Palestra 5: Satellite (grande)\r\n-Palestra 6: Satellite (piccola)");
 		$jsonArray = json_encode($array);
@@ -37,30 +39,28 @@
 		curl_exec($ch);
 		curl_close($ch);
 	}
+
 	else if (strpos($text, "orario mensile delle palestre") !== false){
-		$array = array("chat_id" => $chatId, "photo" => "AgADBAADZb45GykXZAfFLwpkQKmwMcpd-hkABPzOLVTI56smbysBAAEC", "caption" => "Orario dalla settimana 18/09 - 23/09");
+		$array = array("chat_id" => $chatId, /*"photo" => "AgADBAADZb45GykXZAfFLwpkQKmwMcpd-hkABPzOLVTI56smbysBAAEC", "caption" => "Orario dalla settimana 18/09 - 23/09"*/"text" => "L'orario mensile non è ancora disponibile");
 		$jsonArray = json_encode($array);
-		$ch = curl_init('https://api.telegram.org/botTOKEN/sendPhoto');
+		$ch = curl_init('https://api.telegram.org/botTOKEN/sendMessage');
 		curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "POST");
 		curl_setopt($ch, CURLOPT_POSTFIELDS, $jsonArray);
 		curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type: application/json'));
 		curl_exec($ch);
 		curl_close($ch);
 	}
+
 	else if (strpos($text, "orario") !== false){
 		$class = substr($text, 6);
 		$class = trim($class);
-
 		@$url = "http://www.iiscastelli.gov.it/orariotd/";
 		$html = file_get_contents($url);
-
 		//Create a new DOM document
 		$dom = new DOMDocument;
-
 		@$dom->loadHTML($html);
 	 
 		$links = $dom->getElementsByTagName('a');
-
 		foreach ($links as $link) {
 			$value = $link->nodeValue;
 			$value = trim($value);
@@ -72,10 +72,12 @@
 		}
 		if ($pageUrl == false)
 			$response = "*Nessuna classe, professore o laboratorio trovato!*\r\nIl formato di invio è: per le classi `Orario 4BI`, per i professori `Orario Cognome Nome` e per i laboratori `Orario nomeLaboratorio numeroLaboratorio`.";
+
 		else {
 			$class = strtoupper($class);
 			$response = "[Orario $class](http://www.iiscastelli.gov.it/orariotd/$pageUrl)";
 		}
+
 		$array = array("chat_id" => $chatId, "text" => "$response", "parse_mode" => "Markdown");
 		$jsonArray = json_encode($array);
 		$ch = curl_init('https://api.telegram.org/botTOKEN/sendMessage');
@@ -85,6 +87,7 @@
 		curl_exec($ch);
 		curl_close($ch);
 	}
+
 	else if (strpos($text, "planimetria") !== false){
 		$planimetria = substr($text, 11);
 		$planimetria = trim($planimetria);
@@ -114,6 +117,7 @@
 		curl_exec($ch);
 		curl_close($ch);
 	}
+
 	else if (strpos($text, "disposizione classi") !== false){
 		$array = array("chat_id" => $chatId, "document" => "BQADBAADcrIAAq0ZZAdSChClLD-jgAI", "caption" => "Disposizione classi 2017/2018");
 		$jsonArray = json_encode($array);
@@ -124,6 +128,7 @@
 		curl_exec($ch);
 		curl_close($ch);
 	}
+
 	else {
 		$array = array("chat_id" => $chatId, "text" => "Il messaggio inviato non corrisponde a nessun comando 😢 Per piacere, usa la tastiera personalizzata qui sotto!");
 		$jsonArray = json_encode($array);
@@ -145,16 +150,13 @@
 	        $username = username_database;
 	        $password = password_database;
 	        $dbname = name_database;
-
 	        // Create connection
 	        $conn = mysqli_connect($servername, $username, $password, $dbname);
-
 	        // Check connection
 	        if (!$conn) {
 	            die("Connessione fallita: " . mysqli_connect_error());
 	        }
 	        echo "<b>Connesso con successo</b></br>";
-
 	        return $conn;
 	}
 
@@ -179,7 +181,6 @@
 			$sent = true;
 		else
 			$sent = false;
-
 		return $sent;
 	}
 ?>
