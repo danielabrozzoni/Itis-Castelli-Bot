@@ -1,5 +1,6 @@
 <?php
 	ignore_user_abort(true);
+
 	$content = file_get_contents("php://input");
 	$update = json_decode($content, true);
 
@@ -13,6 +14,7 @@
 	$chatId = $update["message"]["chat"]["id"];
 	$messageId = $update["message"]["message_id"];
 	$name = $update["message"]["from"]["first_name"];
+	$lastname = $update["message"]["from"]["last_name"];
 	$username = $update["message"]["from"]["username"];
 	$text = $update["message"]["text"];
 	$text = trim($text);
@@ -142,7 +144,9 @@
 
 	//controllo se l'utente è nel database, nel caso non sia così lo aggiungo alla tabella
 	if(!getData ($chatId, $conn))
-		setData ($chatId, $name, $username, $conn);
+		setData ($chatId, $name, $lastname, $username, $conn);
+
+	mysqli_close($conn);
 
 	//mi collego al db
 	function dbConnect () {
@@ -161,8 +165,8 @@
 	}
 
 	//Inserisco i dati titolo/url nel db
-	function setData ($chatId, $name, $username, $conn) {
-		$sql = "INSERT INTO `user`(`chatId`, `firstName`, `username`) VALUES ('$chatId', '$name', '$username')";
+	function setData ($chatId, $name, $lastname, $username, $conn) {
+		$sql = "INSERT INTO `user`(`chatId`, `firstName`, `lastName`, `username`) VALUES ('$chatId', '$name', '$lastname', '$username')";
 		if (mysqli_query($conn, $sql)) {
     		echo "<b>Voce registrata con successo!</b></br>";
 		}
