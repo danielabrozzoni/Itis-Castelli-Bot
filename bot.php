@@ -38,7 +38,10 @@
 
 			sleep (1);
 
-			setData ($titleNormal, $pdfUrlNormal, $conn);
+			do{
+				$result = setData ($titleNormal, $pdfUrlNormal, $conn);
+				sleep(0.5);
+			} while(!$result);
 		}
 		
 	}
@@ -84,10 +87,12 @@
 	function setData ($title, $pdfUrl, $conn) {
 		$sql = "INSERT INTO `circolari`(`title`, `url`) VALUES ('$title','$pdfUrl')";
 		if (mysqli_query($conn, $sql)) {
-    		echo "<b>Voce registrata con successo!</b></br>";
+    			echo "<b>Voce registrata con successo!</b></br>";
+			return true;
 		}
 		else {
-    		echo "Errore: " . $sql . mysqli_error($conn) . "</br>";
+    			echo "Errore: " . $sql . mysqli_error($conn) . "</br>";
+			return false;
 		}
 	}
 
