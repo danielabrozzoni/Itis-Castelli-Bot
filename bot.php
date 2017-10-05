@@ -1,109 +1,106 @@
 <?php
 	
-	$conn = dbConnect ();
+	$conn = dbConnect (); //mi collego al database
 
-	setlocale(LC_ALL, 'it_IT');
+	define("TOKEN","botToken"); //creo una variabile statica contenente il TOKEN
 
-	//ini_set('max_execution_time', 500);
-	ignore_user_abort(true);
+	setlocale(LC_ALL, 'it_IT'); //imposto la località per l'orario e la lingua
 
-	//Load the HTML page
+	ignore_user_abort(true); //continuo l'esecuzione anche se la connessione viene chiusa
+
 	@$url = "http://www.iiscastelli.gov.it/ViewDocN.aspx?ftype=$FTYPE$&fltr=&section=doc&lock=no&shownav=yes&showlog=$SHOWLOG$";
-	$html = file_get_contents($url);
+	$html = file_get_contents($url); //carico il codice sorgente di quella pagina
 
-	//Create a new DOM document
 	$dom = new DOMDocument;
 
 	@$dom->loadHTML($html);
  
 	$links = $dom->getElementsByTagName('a');
 
-	$reversedArray = createReverseArray ($links);
+	$reversedArray = createReverseArray ($links); //inverto l'array
 
-	$count = count ($reversedArray);
+	$count = count ($reversedArray); //conto gli elementi dell'array
 
 	for($i = 0; $i < $count; $i+=1) {
 		$title = $reversedArray[$i][0];
-		$titleNormal = str_replace("'","",$title);
+		$titleNormal = str_replace("'","",$title); //rimuovo ' per prevenire errori durante il salvataggio dei dati nel database
 		$pdfUrl = "http://www.iiscastelli.gov.it/" . $reversedArray[$i][1];
 		$pdfUrlNormal = str_replace("'","",$pdfUrl);
 
-		if(!getData($titleNormal, $conn)) {
+		if(!getData($titleNormal, $conn)) { //controllo se la circolare è nel database, se non lo è:
 
-    			$messageId = sendTitleMessage ($title);
+    			$messageId = sendTitleMessage ($title); //invio il messaggio contenente il titolo della circolare
+
+			sleep (1); //aspetto un secondo per non allertare l'antispam di Telegram
+
+    			sendPdfMessage ($messageId, $pdfUrl); //invio il messaggio contenente il PDF
 
 			sleep (1);
 
-    			sendPdfMessage ($messageId, $pdfUrl);
-
-			sleep (1);
-
-			do{
-				$result = setData ($titleNormal, $pdfUrlNormal, $conn);
-				sleep(0.5);
-			} while(!$result);
+			do {
+				$result = setData ($titleNormal, $pdfUrlNormal, $conn); //faccio un loop fin quando i dati non vengono salvati nel database per prevenire un doppi messaggi
+				sleep(0.5); //limito le operazioni del database
+			} while (!$result);
 		}
-		
 	}
 
-	mysqli_close($conn);
+	mysqli_close($conn); //chiudo la connessione al database
 
-	//Inverto l'array di coppie titolo/url in modo tale che parta dalla circolare più vecchia
-	function createReverseArray ($ogg) {
+	//FUNZIONI
+	function createReverseArray ($links) { //inverto l'array di coppie titolo/url in modo tale che parta dalla circolare più vecchia
 		$array = array();
 		$i = 0;
 
-		foreach ($ogg as $element) {
-			$array[$i] = array($element->nodeValue, $element->getAttribute('href'));
+		foreach ($links as $link) {
+			$array[$i] = array($link->nodeValue, $link->getAttribute('href'));
 			$i += 1;
 		}
 
-		$arrayReverse = array_reverse($array);
+		$array = array_reverse($array);
 
-		return $arrayReverse;
+		return $array;
 	}
 
-	//mi collego al db
 	function dbConnect () {
-		$servername = "localhost";
+		$servername = host_database;
         $username = username_database;
         $password = password_database;
         $dbname = name_database;
 
-        // Create connection
         $conn = mysqli_connect($servername, $username, $password, $dbname);
 
-        // Check connection
-        if (!$conn) {
+        if (!$conn)
             die("Connessione fallita: " . mysqli_connect_error() . "</br>");
-            exit;
-        }
+
         echo "<b>Connesso con successo</b></br>";
 
         return $conn;
 	}
 
-	//Inserisco i dati titolo/url nel db
 	function setData ($title, $pdfUrl, $conn) {
 		$sql = "INSERT INTO `circolari`(`title`, `url`) VALUES ('$title','$pdfUrl')";
+
 		if (mysqli_query($conn, $sql)) {
-    			echo "<b>Voce registrata con successo!</b></br>";
+    		echo "<b>Voce registrata con successo!</b></br>";
 			return true;
 		}
 		else {
-    			echo "Errore: " . $sql . mysqli_error($conn) . "</br>";
+    		echo "Errore: " . $sql . mysqli_error($conn) . "</br>";
 			return false;
 		}
 	}
 
-	//controllo se una circolare e' nel database
 	function getData ($title, $conn) {
 		$sql = "SELECT `id` FROM `circolari` WHERE `title` = '$title'";
+
 		$result = mysqli_query($conn, $sql);
+
 		if ($result === false)
 			exit;
+
 		else if (mysqli_num_rows($result) > 0)
 			$sent = true;
+
 		else
 			$sent = false;
 
@@ -114,44 +111,48 @@
 		$data = strftime("%e %B %Y");
 		$array = array("chat_id" => chat_id, "parse_mode" => "Markdown", "text" => "*Nuova circolare del $data!*\r\n`$title`", "disable_notification" => true);
 		$jsonArray = json_encode($array);
-		$ch = curl_init('https://api.telegram.org/botTOKEN/sendMessage');
+		$ch = curl_init('https://api.telegram.org/bot' . TOKEN . '/sendMessage');
 		curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "POST");
 		curl_setopt($ch, CURLOPT_POSTFIELDS, $jsonArray);
 		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 		curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type: application/json'));
 		$response = curl_exec($ch);
 		curl_close($ch);
-		if($response === false)
+
+		if($response === false) {
+			echo "Errore invio titolo";
 			exit;
-		//echo $response . "</br>";
+		}
+
 		$array = json_decode($response, true);
 		$messageId = $array ["result"] ["message_id"];
+
 		return $messageId;
 	}
 
 	function sendPdfMessage ($messageId, $pdfUrl) {
 		$array = array("chat_id" => chat_id, "reply_to_message_id" => $messageId, "document" => $pdfUrl, "disable_notification" => true);
 		$jsonArray = json_encode($array);
-		$ch = curl_init('https://api.telegram.org/botTOKEN/sendDocument');
+		$ch = curl_init('https://api.telegram.org/bot' . TOKEN . '/sendDocument');
 		curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "POST");
 		curl_setopt($ch, CURLOPT_POSTFIELDS, $jsonArray);
 		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 		curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type: application/json'));
 		$response = curl_exec($ch);
 		curl_close($ch);
+
 		if($response === false) {
-			$array = array("chat_id" => "@ItisCastelli", "message_id" => $messageId);
+			$array = array("chat_id" => chat_id, "message_id" => $messageId);
 			$jsonArray = json_encode($array);
-			$ch = curl_init('https://api.telegram.org/botTOKEN/deleteMessage');
+			$ch = curl_init('https://api.telegram.org/bot' . TOKEN . '/deleteMessage');
 			curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "POST");
 			curl_setopt($ch, CURLOPT_POSTFIELDS, $jsonArray);
 			curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 			curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type: application/json'));
 			$response = curl_exec($ch);
 			curl_close($ch);
-			echo "errore invio PDF";
+			echo "Errore invio PDF";
 			exit;
 		}
-		//echo "</br>";
 	} 
 ?>
