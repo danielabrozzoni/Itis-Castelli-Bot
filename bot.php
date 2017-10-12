@@ -27,7 +27,7 @@
 		$pdfUrl = "http://www.iiscastelli.gov.it/" . $reversedArray[$i][1];
 		$pdfUrlNormal = str_replace("'","",$pdfUrl);
 
-		if(!getData($titleNormal, $conn)) { //controllo se la circolare è nel database, se non lo è:
+		if(!getData($titleNormal, $conn)) {  //controllo se la circolare è nel database, se non lo è:
 
     			$messageId = sendTitleMessage ($title); //invio il messaggio contenente il titolo della circolare
 
